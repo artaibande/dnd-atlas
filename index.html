@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>D&D Atlas — Mesa de combate</title>
+<style>
+:root{color-scheme:dark;--bg:#11151b;--panel:#1b222c;--line:#354151;--gold:#d9b66f;--text:#f1f3f6;--muted:#aab5c3}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}
+header{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-size:1.25rem;margin:0;color:var(--gold)}small,.muted{color:var(--muted)}
+main{max-width:1200px;margin:auto;padding:18px;display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.boardWrap{overflow:auto;border-radius:10px;border:1px solid #596271;background:#2c3b32}
+#board{position:relative;min-width:560px;width:100%;aspect-ratio:12/8;background-color:#415044;background-image:linear-gradient(#ffffff18 1px,transparent 1px),linear-gradient(90deg,#ffffff18 1px,transparent 1px),radial-gradient(ellipse at 25% 20%,#66765a 0 8%,transparent 9%),radial-gradient(ellipse at 78% 72%,#6d7650 0 12%,transparent 13%),linear-gradient(135deg,#35483b,#59644b 48%,#3b5143);background-size:calc(100% / 12) calc(100% / 8),calc(100% / 12) calc(100% / 8),100% 100%,100% 100%,100% 100%}
+#board:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(30deg,transparent 42%,#9b8b6b66 43% 48%,transparent 49%);opacity:.8}
+.token{position:absolute;width:7%;aspect-ratio:1;border:2px solid #fff;border-radius:50%;display:grid;place-items:center;font-weight:800;box-shadow:0 3px 10px #0008;transform:translate(-50%,-50%);z-index:2;cursor:pointer}
+.token.active{outline:3px solid var(--gold);outline-offset:2px}
+.token span{font-size:clamp(10px,1.4vw,16px);text-shadow:0 1px 3px #000}
+button,select,input{font:inherit;border-radius:9px;border:1px solid var(--line);background:#252f3c;color:var(--text);padding:10px}
+button{cursor:pointer}button:hover{border-color:var(--gold)}button.primary{background:#745b2b;border-color:#a78a4d}button:disabled{opacity:.4;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.stack{display:grid;gap:10px}.character{padding:10px;border:1px solid var(--line);border-radius:10px;display:flex;gap:10px;align-items:center;cursor:pointer}.character.selected{border-color:var(--gold);background:#342d20}.dot{width:18px;height:18px;border-radius:50%;border:2px solid white;flex-shrink:0}
+#status{padding:9px 11px;background:#10151b;border-radius:8px;color:var(--muted);font-size:.9rem}
+#controller{display:none;max-width:480px;margin:20px auto;padding:18px}.dpad{display:grid;grid-template-columns:repeat(3,72px);grid-template-rows:repeat(3,64px);gap:8px;justify-content:center;margin:18px 0}.dpad button{font-size:1.5rem;padding:0}.dpad .up{grid-column:2;grid-row:1}.dpad .left{grid-column:1;grid-row:2}.dpad .center{grid-column:2;grid-row:2;font-size:.85rem}.dpad .right{grid-column:3;grid-row:2}.dpad .down{grid-column:2;grid-row:3}
+.notice{border-left:3px solid var(--gold);padding:8px 12px;color:var(--muted);font-size:.9rem}
+@media(max-width:800px){main{grid-template-columns:1fr;padding:12px}header{padding:13px}.hide-mobile{display:none}#controller{display:block}body.controller main{display:none}body.controller header .sub{display:none}}
+</style>
+</head>
+<body>
+<header><div><h1>⚔ D&D Atlas</h1><small class="sub">Mesa de combate · prototipo inicial</small></div><div class="row"><button id="boardMode">Vista del mapa</button><button id="controllerMode">Modo mando</button></div></header>
+<section id="controller" class="panel">
+<h2 style="margin-top:0">Mando del aventurero</h2>
+<p class="muted">Selecciona tu personaje y usa las flechas para moverlo en esta pantalla.</p>
+<label for="mobileCharacter">Personaje</label><br><select id="mobileCharacter" style="width:100%;margin-top:6px"></select>
+<div class="dpad">
+<button class="up" data-move="0,-1" aria-label="Arriba">▲</button>
+<button class="left" data-move="-1,0" aria-label="Izquierda">◀</button>
+<button class="center" id="passTurn">Pasar turno</button>
+<button class="right" data-move="1,0" aria-label="Derecha">▶</button>
+<button class="down" data-move="0,1" aria-label="Abajo">▼</button>
+</div>
+<div id="mobileStatus" class="notice">Este prototipo aún no sincroniza con otros dispositivos.</div>
+</section>
+<main id="desktop">
+<section class="panel">
+<div class="row" style="justify-content:space-between;margin-bottom:12px"><div><strong>Mapa de combate</strong><div class="muted" style="font-size:.9rem">Exterior · bosque y sendero</div></div><button id="reset">Reiniciar posiciones</button></div>
+<div class="boardWrap"><div id="board" aria-label="Mapa de batalla"></div></div>
+<p class="notice">Prototipo visual: el mapa es ilustrativo y la cuadrícula sirve para probar el movimiento. La sincronización móvil/ordenador se añadirá en el siguiente paso.</p>
+</section>
+<aside class="panel stack">
+<div><strong>Orden de turno</strong><p class="muted" style="margin:5px 0 0">Selecciona un aventurero para activarlo.</p></div>
+<div id="characters" class="stack"></div>
+<div id="status" aria-live="polite">Preparado. Elige un personaje.</div>
+<div class="row"><button id="prev">← Anterior</button><button id="next" class="primary">Siguiente turno →</button></div>
+<hr style="border:0;border-top:1px solid var(--line);width:100%">
+<div><strong>QR de figuras</strong><p class="muted">Los QR definitivos se generarán cuando cada personaje tenga su dirección pública y exista sincronización en tiempo real.</p></div>
+</aside>
+</main>
+<script>
+const initial=[
+ {id:'ar',name:'Aria',role:'Exploradora',color:'#2f9e78',x:22,y:34,letter:'A'},
+ {id:'br',name:'Borin',role:'Guerrero',color:'#c05d43',x:39,y:55,letter:'B'},
+ {id:'ly',name:'Lyra',role:'Hechicera',color:'#7d72d8',x:63,y:30,letter:'L'},
+ {id:'th',name:'Thom',role:'Pícaro',color:'#c69c36',x:77,y:65,letter:'T'}
+];
+let heroes=initial.map(x=>({...x})),active=0;
+const $=id=>document.getElementById(id);
+function render(){
+ $('board').innerHTML='';
+ heroes.forEach((h,i)=>{const el=document.createElement('button');el.className='token'+(i===active?' active':'');el.style.left=h.x+'%';el.style.top=h.y+'%';el.style.background=h.color;el.title=h.name;el.innerHTML='<span>'+h.letter+'</span>';el.onclick=()=>{active=i;render()};$('board').append(el)});
+ $('characters').innerHTML='';
+ heroes.forEach((h,i)=>{const el=document.createElement('div');el.className='character'+(i===active?' selected':'');el.innerHTML='<span class="dot" style="background:'+h.color+'"></span><div><strong>'+h.name+'</strong><div class="muted" style="font-size:.85rem">'+h.role+'</div></div>';el.onclick=()=>{active=i;render()};$('characters').append(el)});
+ $('mobileCharacter').innerHTML=heroes.map((h,i)=>'<option value="'+h.id+'">'+h.name+' — '+h.role+'</option>').join('');
+ $('mobileCharacter').value=heroes[active].id;
+ $('status').textContent='Turno activo: '+heroes[active].name;
+ $('mobileStatus').textContent='Control local de '+heroes[active].name+'. Aún no hay conexión con otros dispositivos.';
+}
+function move(dx,dy){const h=heroes[active];h.x=Math.max(4,Math.min(96,h.x+dx*8.333));h.y=Math.max(6,Math.min(94,h.y+12.5));render()}
+document.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>{const [x,y]=b.dataset.move.split(',').map(Number);move(x,y)});
+$('mobileCharacter').onchange=e=>{active=heroes.findIndex(h=>h.id===e.target.value);render()};
+function next(){active=(active+1)%heroes.length;render()}
+$('next').onclick=next;$('passTurn').onclick=next;$('prev').onclick=()=>{active=(active+heroes.length-1)%heroes.length;render()};
+$('reset').onclick=()=>{heroes=initial.map(x=>({...x}));active=0;render()};
+$('controllerMode').onclick=()=>{document.body.classList.add('controller');window.scrollTo(0,0)};
+$('boardMode').onclick=()=>{document.body.classList.remove('controller');window.scrollTo(0,0)};
+render();
+</script>
+</body></html>
