@@ -46,7 +46,16 @@ async function connect(){const c=credentials();if(poller)clearInterval(poller);i
 async function save(){if(applyingRemote)return;state.updatedAt=Date.now();render();if(!client){setStatus('Cambios locais; conecta Supabase para compartilos.');return}try{const {error}=await client.rpc('dnd_atlas_save_state',{p_room_code:room,p_state:state});if(error)throw error;setStatus(connected?'Conectado · cambios gardados.':'Cambios gardados.',connected?'ok':'')}catch(e){setStatus('Non se puido gardar: '+e.message,'err')}}
 function move(dx,dy){const p=state.positions[selected]||{x:0,y:0};state.positions[selected]={x:Math.max(0,Math.min(11,p.x+dx)),y:Math.max(0,Math.min(7,p.y+dy))};save()}
 function nextTurn(){const list=chars();if(!list.length)return;state.turn=(state.turn+1)%list.length;selected=list[state.turn].id;save()}
-function mode(which){document.body.classList.toggle('controller',which==='controller')}
+function mode(which){
+  const active = which === 'controller';
+  document.body.classList.toggle('controller', active);
+  document.querySelector('main').style.setProperty(
+    'display', active ? 'none' : '', 'important'
+  );
+  $('controller').style.setProperty(
+    'display', active ? 'block' : 'none', 'important'
+  );
+}
 function openCharacter(){ $('characterForm').reset();$('charColor').value='#b85c45';$('characterDialogTitle').textContent='Engadir personaxe';$('characterForm').dataset.editId='';$('characterForm').querySelector('button[type="submit"]').textContent='Crear personaxe';$('characterDialog').showModal()}
 $('boardMode').addEventListener('click',()=>mode('board'));$('controllerMode').addEventListener('click',()=>mode('controller'));$('mobileBoard').addEventListener('click',()=>mode('board'));$('endTurn').addEventListener('click',nextTurn);$('mobileTurn').addEventListener('click',nextTurn);document.querySelectorAll('[data-move]').forEach(b=>b.addEventListener('click',()=>move(...b.dataset.move.split(',').map(Number))));$('mobileCharacter').addEventListener('change',e=>{selected=e.target.value;render()});$('resetPositions').addEventListener('click',()=>{if(confirm('Reiniciar as posicións e o turno para toda a mesa?')){state.positions={};chars().forEach((c,i)=>state.positions[c.id]={x:[2,4,8,9][i%4],y:[2,4,3,6][i%4]});state.turn=0;selected=chars()[0]?.id||'';save()}});
 $('addCharacter').addEventListener('click',openCharacter);$('closeCharacter').addEventListener('click',()=>$('characterDialog').close());$('cancelCharacter').addEventListener('click',()=>$('characterDialog').close());$('characterForm').addEventListener('submit',e=>{e.preventDefault();const name=$('charName').value.trim();if(!name)return;const editId=$('characterForm').dataset.editId;const symbol=($('charSymbol').value.trim()||name.slice(0,1)).slice(0,2).toUpperCase();if(editId){const c=chars().find(x=>x.id===editId);if(!c)return;c.name=name;c.type=$('charType').value;c.color=$('charColor').value;c.symbol=symbol}else{const id='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);const c={id,name,type:$('charType').value,color:$('charColor').value,symbol};state.characters=[...chars(),c];state.positions[id]={x:Math.floor(Math.random()*12),y:Math.floor(Math.random()*8)};selected=id}$('characterForm').dataset.editId='';$('characterDialog').close();save()});
